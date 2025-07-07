@@ -143,5 +143,4 @@ python Table_RSZ.py --curve _67 --key 27
 
 > "Ваши визуализации превращают абстрактную математику в осязаемые структуры. Продолжайте развивать образовательное направление!" — Заключение рецензента.
 ```
-## Статистика посещаемости
 ![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/yourrepo&label=Visitors&countColor=%23263759)
