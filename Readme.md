@@ -150,3 +150,6 @@ python Table_RSZ.py --curve _67 --key 27
 3. **Визуальная наглядность** - Использование Mermaid-диаграмм и таблиц
 4. **Честность об ограничениях** - Ясное указание границ применимости
 5. **Образовательный акцент** - Подчеркивание педагогической ценности
+
+## Статистика посещаемости
+![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/yourrepo&label=Visitors&countColor=%23263759)
