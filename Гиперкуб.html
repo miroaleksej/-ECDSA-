@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гиперкуб ECDSA: d=27 mod 79</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e6e6e6;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+        button {
+            background: #4cc9f0;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #4361ee;
+            color: white;
+        }
+        h1 {
+            margin-top: 0;
+            color: #4cc9f0;
+            font-size: 1.5em;
+            border-bottom: 1px solid #4361ee;
+            padding-bottom: 5px;
+        }
+        .legend {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        .legend-item {
+            text-align: center;
+            font-size: 0.8em;
+        }
+        .color-box {
+            width: 20px;
+            height: 20px;
+            margin: 0 auto 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="info-panel">
+            <h1>Гиперкуб ECDSA (d=27 mod 79)</h1>
+            <p><strong>Плоскость X-Y (uz-ur)</strong>: Значения Rx (x-координата точки)</p>
+            <p><strong>Ось Z</strong>: Временной сдвиг</p>
+            <p><strong>Цвет точки</strong>: Значение Rx (от синего до красного)</p>
+            <p><strong>Размер точки</strong>: Значение s (компонент подписи)</p>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background: #0000ff;"></div>
+                    <div>Rx = 0</div>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #ff00ff;"></div>
+                    <div>Rx = 40</div>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #ff0000;"></div>
+                    <div>Rx = 78</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <div>Коллизии выделены <span style="color: yellow;">жёлтым</span></div>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <button id="toggleRotation">Пауза вращения</button>
+            <button id="toggleCollisions">Показать коллизии</button>
+            <button id="resetView">Сбросить вид</button>
+        </div>
+    </div>
+
+    <script>
+        // Параметры кривой
+        const n = 79; // Порядок группы
+        const d = 27; // Приватный ключ
+        
+        // Создаем сцену
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c0c1a);
+        
+        // Создаем камеру
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(50, 50, 70);
+        
+        // Создаем рендерер
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Добавляем управление камерой
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Создаем оси координат
+        const axesHelper = new THREE.AxesHelper(50);
+        scene.add(axesHelper);
+        
+        // Создаем сетку в плоскости XZ (uz-z)
+        const gridHelperXZ = new THREE.GridHelper(80, 20, 0x2a2a5c, 0x1a1a42);
+        gridHelperXZ.rotation.x = Math.PI / 2;
+        gridHelperXZ.position.y = -1;
+        scene.add(gridHelperXZ);
+        
+        // Создаем сетку в плоскости XY (uz-ur)
+        const gridHelperXY = new THREE.GridHelper(80, 20, 0x2a2a5c, 0x1a1a42);
+        gridHelperXY.position.z = -1;
+        scene.add(gridHelperXY);
+        
+        // Создаем сетку в плоскости YZ (ur-z)
+        const gridHelperYZ = new THREE.GridHelper(80, 20, 0x2a2a5c, 0x1a1a42);
+        gridHelperYZ.rotation.z = Math.PI / 2;
+        gridHelperYZ.position.x = -1;
+        scene.add(gridHelperYZ);
+        
+        // Подписи осей
+        function createAxisLabel(text, position, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 128;
+            canvas.height = 64;
+            context.fillStyle = color;
+            context.font = '24px Arial';
+            context.fillText(text, 10, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(10, 5, 1);
+            sprite.position.copy(position);
+            scene.add(sprite);
+        }
+        
+        createAxisLabel('uz (X)', new THREE.Vector3(45, -5, 0), '#4cc9f0');
+        createAxisLabel('ur (Y)', new THREE.Vector3(0, 45, 0), '#f72585');
+        createAxisLabel('z (Z)', new THREE.Vector3(0, -5, 45), '#4361ee');
+        
+        // Создаем геометрию для точек
+        const pointsGeometry = new THREE.BufferGeometry();
+        const collisionGeometry = new THREE.BufferGeometry();
+        
+        // Данные для точек и коллизий
+        const positions = [];
+        const colors = [];
+        const sizes = [];
+        const collisionPositions = [];
+        const collisionColors = [];
+        
+        // Карта для отслеживания коллизий
+        const rxMap = new Map();
+        
+        // Генерируем точки
+        for (let ur = 0; ur < n; ur++) {
+            for (let uz = 0; uz < n; uz++) {
+                // Вычисляем Rx (x-координата точки)
+                const T = (ur * d + uz) % n;
+                const Rx = T; // Для упрощения используем T как Rx
+                
+                // Вычисляем s (компонент подписи)
+                const s = (ur + uz) % n; // Упрощенная модель
+                
+                // Позиция точки (uz, ur, z)
+                for (let z = 0; z < n; z += 4) { // Используем шаг 4 для z для уменьшения плотности
+                    positions.push(uz, ur, z);
+                    
+                    // Цвет на основе Rx (от синего к красному)
+                    const color = new THREE.Color();
+                    color.setHSL(Rx / n * 0.7, 1.0, 0.5);
+                    colors.push(color.r, color.g, color.b);
+                    
+                    // Размер на основе s (нормализованный)
+                    sizes.push(0.5 + s / n * 3);
+                    
+                    // Проверка на коллизии
+                    const key = `${Rx}-${s}`;
+                    if (rxMap.has(key)) {
+                        // Коллизия - добавляем в отдельный массив
+                        collisionPositions.push(uz, ur, z);
+                        collisionColors.push(1, 1, 0); // Желтый цвет
+                    } else {
+                        rxMap.set(key, true);
+                    }
+                }
+            }
+        }
+        
+        // Устанавливаем атрибуты для точек
+        pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        pointsGeometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+        
+        // Материал для точек
+        const pointsMaterial = new THREE.PointsMaterial({
+            size: 1.5,
+            vertexColors: true,
+            sizeAttenuation: false,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        // Создаем систему точек
+        const points = new THREE.Points(pointsGeometry, pointsMaterial);
+        scene.add(points);
+        
+        // Устанавливаем атрибуты для коллизий
+        collisionGeometry.setAttribute('position', new THREE.Float32BufferAttribute(collisionPositions, 3));
+        collisionGeometry.setAttribute('color', new THREE.Float32BufferAttribute(collisionColors, 3));
+        
+        // Материал для коллизий
+        const collisionMaterial = new THREE.PointsMaterial({
+            size: 3.5,
+            vertexColors: true,
+            sizeAttenuation: false,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        // Создаем систему точек для коллизий
+        const collisionPoints = new THREE.Points(collisionGeometry, collisionMaterial);
+        collisionPoints.visible = false; // По умолчанию скрыты
+        scene.add(collisionPoints);
+        
+        // Создаем линии, соединяющие коллизии
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.5 });
+        const lines = new THREE.Group();
+        
+        // Генерируем линии между коллизиями
+        const linePositions = [];
+        for (let i = 0; i < collisionPositions.length; i += 3) {
+            if (i > 0 && i % 6 === 0) {
+                // Создаем линию между текущей и предыдущей коллизией
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(6);
+                
+                // Первая точка (предыдущая коллизия)
+                positions[0] = collisionPositions[i-3];
+                positions[1] = collisionPositions[i-2];
+                positions[2] = collisionPositions[i-1];
+                
+                // Вторая точка (текущая коллизия)
+                positions[3] = collisionPositions[i];
+                positions[4] = collisionPositions[i+1];
+                positions[5] = collisionPositions[i+2];
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const line = new THREE.Line(geometry, lineMaterial);
+                lines.add(line);
+            }
+        }
+        lines.visible = false; // По умолчанию скрыты
+        scene.add(lines);
+        
+        // Добавляем куб для обозначения границ
+        const cubeSize = 80;
+        const cubeEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize));
+        const cube = new THREE.LineSegments(cubeEdges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 }));
+        scene.add(cube);
+        
+        // Добавляем освещение
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight1 = new THREE.DirectionalLight(0x4cc9f0, 0.8);
+        directionalLight1.position.set(1, 1, 1);
+        scene.add(directionalLight1);
+        
+        const directionalLight2 = new THREE.DirectionalLight(0xf72585, 0.5);
+        directionalLight2.position.set(-1, -1, -1);
+        scene.add(directionalLight2);
+        
+        // Переменные состояния
+        let rotating = true;
+        
+        // Обработчики кнопок
+        document.getElementById('toggleRotation').addEventListener('click', () => {
+            rotating = !rotating;
+            document.getElementById('toggleRotation').textContent = rotating ? 'Пауза вращения' : 'Возобновить вращение';
+        });
+        
+        document.getElementById('toggleCollisions').addEventListener('click', () => {
+            const visible = !collisionPoints.visible;
+            collisionPoints.visible = visible;
+            lines.visible = visible;
+            document.getElementById('toggleCollisions').textContent = 
+                visible ? 'Скрыть коллизии' : 'Показать коллизии';
+        });
+        
+        document.getElementById('resetView').addEventListener('click', () => {
+            camera.position.set(50, 50, 70);
+            camera.lookAt(0, 0, 0);
+            controls.reset();
+        });
+        
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (rotating) {
+                points.rotation.y += 0.002;
+                collisionPoints.rotation.y += 0.002;
+                lines.rotation.y += 0.002;
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
