@@ -83,7 +83,7 @@ def explain_group_law(d, i1, j1, i2, j2, G, n):
     if P1 == P2:
         print(f"Коллизия: ({i1}-{i2})d ≡ {j2-j1} mod {n}")
 ```
-рисунок 1: Визуализацияя заполнения значениями Rx при изменяющихся ur uz.
+**Рисунок 1: Визуализацияя заполнения значениями Rx при изменяющихся ur uz для закрытого ключа d=27.**
 
 ![image](https://github.com/user-attachments/assets/7ae59fd3-7b45-4b48-b5b1-52e9fe1e0703)
 
